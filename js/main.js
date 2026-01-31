@@ -3,12 +3,14 @@ const supabaseUrl = 'https://vfqiahdfwvsctgkrvucw.supabase.co';
 // 注意: ここには `anon` キー (eyJから始まる文字列) が入るのが一般的です。
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmcWlhaGRmd3ZzY3Rna3J2dWN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4Mzg3NTEsImV4cCI6MjA4NTQxNDc1MX0.2fVKGc9g4xz__WUNYpb74HU6YIvwRVC2upuTYNg5Dgs';
 
-let supabase;
+// 変数名を supabase から supabaseClient に変更して衝突を回避
+let supabaseClient;
 try {
     if (!window.supabase) {
         throw new Error('Supabaseライブラリがロードされていません。');
     }
-    supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    // ライブラリ(window.supabase)を使ってクライアントを作成
+    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 } catch (e) {
     console.error('Supabase Init Error:', e);
     alert('システムの初期化に失敗しました: ' + e.message);
@@ -27,9 +29,23 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAdminState();
 });
 
+// 認証状態の監視
+if (supabaseClient) {
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (session) {
+            isAdmin = true;
+        } else {
+            isAdmin = false;
+        }
+        checkAdminState();
+    });
+}
+
 // Supabaseから商品データを取得
 async function fetchProducts() {
-    const { data, error } = await supabase
+    if (!supabaseClient) return;
+
+    const { data, error } = await supabaseClient
         .from('products')
         .select('*')
         .order('id', { ascending: true });
@@ -98,6 +114,8 @@ function displayAdminProducts() {
 
 // 商品追加（Supabase）
 async function addNewProduct() {
+    if (!supabaseClient) return;
+
     const name = document.getElementById('new-p-name').value;
     const price = parseInt(document.getElementById('new-p-price').value);
     const desc = document.getElementById('new-p-desc').value;
@@ -115,7 +133,7 @@ async function addNewProduct() {
         placeholder: icon
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('products')
         .insert([newProduct]);
 
@@ -136,9 +154,10 @@ async function addNewProduct() {
 
 // 商品削除（Supabase）
 async function deleteProduct(id) {
+    if (!supabaseClient) return;
     if (!confirm("この商品を削除しますか？")) return;
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from('products')
         .delete()
         .eq('id', id);
@@ -246,16 +265,6 @@ function removeFromCart(productId) {
     }
 }
 
-// 認証状態の監視
-supabase.auth.onAuthStateChange((event, session) => {
-    if (session) {
-        isAdmin = true;
-    } else {
-        isAdmin = false;
-    }
-    checkAdminState();
-});
-
 function setupAdminToggle() {
     const btn = document.getElementById('admin-toggle');
     const modal = document.getElementById('login-modal');
@@ -280,13 +289,15 @@ function setupAdminToggle() {
 }
 
 async function attemptLogin() {
+    if (!supabaseClient) return;
+
     const pass = document.getElementById('admin-password').value;
     const errorMsg = document.getElementById('login-error');
 
-    // 管理者用メールアドレス（固定）
+    // 管理者用メールアドレス
     const email = 'admin@bakery.com';
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
         email: email,
         password: pass
     });
@@ -304,8 +315,9 @@ async function attemptLogin() {
 }
 
 async function logout() {
+    if (!supabaseClient) return;
     if (!confirm("ログアウトしますか？")) return;
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabaseClient.auth.signOut();
     if (error) console.error('Logout failed:', error);
     // 状態更新は onAuthStateChange で行われます
 }
