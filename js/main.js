@@ -1,8 +1,7 @@
 // Supabase設定
 const supabaseUrl = 'https://vfqiahdfwvsctgkrvucw.supabase.co';
 // 注意: ここには `anon` キー (eyJから始まる文字列) が入るのが一般的です。
-// 現在の値: 'sb_publishable_C3m9rLGbMpRa4FAhqrKxEw_NrBDkF_n'
-const supabaseKey = 'sb_publishable_C3m9rLGbMpRa4FAhqrKxEw_NrBDkF_n';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmcWlhaGRmd3ZzY3Rna3J2dWN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4Mzg3NTEsImV4cCI6MjA4NTQxNDc1MX0.2fVKGc9g4xz__WUNYpb74HU6YIvwRVC2upuTYNg5Dgs';
 
 let supabase;
 try {
