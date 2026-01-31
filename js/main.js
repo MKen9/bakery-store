@@ -1,7 +1,19 @@
 // Supabase設定
 const supabaseUrl = 'https://vfqiahdfwvsctgkrvucw.supabase.co';
+// 注意: ここには `anon` キー (eyJから始まる文字列) が入るのが一般的です。
+// 現在の値: 'sb_publishable_C3m9rLGbMpRa4FAhqrKxEw_NrBDkF_n'
 const supabaseKey = 'sb_publishable_C3m9rLGbMpRa4FAhqrKxEw_NrBDkF_n';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+let supabase;
+try {
+    if (!window.supabase) {
+        throw new Error('Supabaseライブラリがロードされていません。');
+    }
+    supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+} catch (e) {
+    console.error('Supabase Init Error:', e);
+    alert('システムの初期化に失敗しました: ' + e.message);
+}
 
 // グローバル変数
 let localProducts = [];
