@@ -1,16 +1,43 @@
-// データの読み込み
-let localProducts = JSON.parse(localStorage.getItem('bakery-products')) || products;
+// Supabase設定
+const supabaseUrl = 'https://vfqiahdfwvsctgkrvucw.supabase.co';
+const supabaseKey = 'sb_publishable_C3m9rLGbMpRa4FAhqrKxEw_NrBDkF_n';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// グローバル変数
+let localProducts = [];
 let cart = JSON.parse(localStorage.getItem('bakery-cart')) || [];
-let isAdmin = sessionStorage.getItem('bakery-is-admin') === 'true';
+let isAdmin = false;
 
 document.addEventListener('DOMContentLoaded', () => {
-    displayProducts();
-    displayAdminProducts();
+    fetchProducts();
     updateCartCount();
     setupCartModal();
     setupAdminToggle();
     checkAdminState();
 });
+
+// Supabaseから商品データを取得
+async function fetchProducts() {
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('id', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching products:', error);
+        // テーブルがまだない場合などのエラーハンドリング
+        if (error.code === '42P01') { // undefined_table
+            alert('Supabaseに "products" テーブルが見つかりません。SQLを実行してテーブルを作成してください。');
+        }
+        return;
+    }
+
+    if (data) {
+        localProducts = data;
+        displayProducts();
+        displayAdminProducts();
+    }
+}
 
 function checkAdminState() {
     const section = document.getElementById('admin-section');
@@ -28,9 +55,14 @@ function displayProducts() {
     const productList = document.getElementById('product-list');
     if (!productList) return;
 
+    if (localProducts.length === 0) {
+        productList.innerHTML = '<p style="text-align:center; width:100%;">商品が読み込まれていません。<br>管理画面から商品を追加するか、データベースを確認してください。</p>';
+        return;
+    }
+
     productList.innerHTML = localProducts.map(product => `
         <div class="product-card">
-            <div class="product-image">${product.placeholder}</div>
+            <div class="product-image">${product.placeholder || '🍞'}</div>
             <div class="product-info">
                 <h4>${product.name}</h4>
                 <p>${product.description}</p>
@@ -47,13 +79,14 @@ function displayAdminProducts() {
 
     adminList.innerHTML = localProducts.map(product => `
         <div class="admin-item">
-            <span>${product.placeholder} <strong>${product.name}</strong> - ¥${product.price}</span>
+            <span>${product.placeholder || '🍞'} <strong>${product.name}</strong> - ¥${product.price}</span>
             <button onclick="deleteProduct(${product.id})" style="color: red; border: none; background: none; cursor: pointer;">削除</button>
         </div>
     `).join('');
 }
 
-function addNewProduct() {
+// 商品追加（Supabase）
+async function addNewProduct() {
     const name = document.getElementById('new-p-name').value;
     const price = parseInt(document.getElementById('new-p-price').value);
     const desc = document.getElementById('new-p-desc').value;
@@ -65,37 +98,49 @@ function addNewProduct() {
     }
 
     const newProduct = {
-        id: Date.now(),
         name: name,
         price: price,
         description: desc,
         placeholder: icon
     };
 
-    localProducts.push(newProduct);
-    saveProducts();
-    displayProducts();
-    displayAdminProducts();
+    const { data, error } = await supabase
+        .from('products')
+        .insert([newProduct]);
 
-    // クリア
-    document.getElementById('new-p-name').value = '';
-    document.getElementById('new-p-price').value = '';
-    document.getElementById('new-p-desc').value = '';
-    document.getElementById('new-p-icon').value = '';
+    if (error) {
+        console.error('Error inserting product:', error);
+        alert('追加に失敗しました: ' + error.message);
+    } else {
+        // 再取得して表示更新
+        fetchProducts();
+
+        // クリア
+        document.getElementById('new-p-name').value = '';
+        document.getElementById('new-p-price').value = '';
+        document.getElementById('new-p-desc').value = '';
+        document.getElementById('new-p-icon').value = '';
+    }
 }
 
-function deleteProduct(id) {
+// 商品削除（Supabase）
+async function deleteProduct(id) {
     if (!confirm("この商品を削除しますか？")) return;
-    localProducts = localProducts.filter(p => p.id !== id);
-    saveProducts();
-    displayProducts();
-    displayAdminProducts();
+
+    const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        console.error('Error deleting product:', error);
+        alert('削除に失敗しました: ' + error.message);
+    } else {
+        fetchProducts();
+    }
 }
 
-function saveProducts() {
-    localStorage.setItem('bakery-products', JSON.stringify(localProducts));
-}
-
+// カート機能（ローカルストレージ使用）
 function addToCart(productId) {
     const product = localProducts.find(p => p.id === productId);
     if (!product) return;
@@ -190,6 +235,16 @@ function removeFromCart(productId) {
     }
 }
 
+// 認証状態の監視
+supabase.auth.onAuthStateChange((event, session) => {
+    if (session) {
+        isAdmin = true;
+    } else {
+        isAdmin = false;
+    }
+    checkAdminState();
+});
+
 function setupAdminToggle() {
     const btn = document.getElementById('admin-toggle');
     const modal = document.getElementById('login-modal');
@@ -213,29 +268,35 @@ function setupAdminToggle() {
     };
 }
 
-const ADMIN_PASS = "bakery2026"; // 暫定のパスワード
-
-function attemptLogin() {
+async function attemptLogin() {
     const pass = document.getElementById('admin-password').value;
     const errorMsg = document.getElementById('login-error');
 
-    if (pass === ADMIN_PASS) {
-        isAdmin = true;
-        sessionStorage.setItem('bakery-is-admin', 'true');
+    // 管理者用メールアドレス（固定）
+    const email = 'admin@bakery.com';
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: pass
+    });
+
+    if (error) {
+        console.error('Login failed:', error);
+        errorMsg.innerText = 'パスワードが正しくありません。';
+        errorMsg.style.display = 'block';
+    } else {
         document.getElementById('login-modal').style.display = 'none';
         document.getElementById('admin-password').value = '';
         errorMsg.style.display = 'none';
-        checkAdminState();
-    } else {
-        errorMsg.style.display = 'block';
+        // 状態更新は onAuthStateChange で行われます
     }
 }
 
-function logout() {
+async function logout() {
     if (!confirm("ログアウトしますか？")) return;
-    isAdmin = false;
-    sessionStorage.removeItem('bakery-is-admin');
-    checkAdminState();
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Logout failed:', error);
+    // 状態更新は onAuthStateChange で行われます
 }
 
 function confirmReservation() {
@@ -257,9 +318,4 @@ function confirmReservation() {
     document.getElementById('cart-modal').style.display = 'none';
     alert("予約が完了しました！\nご来店をお待ちしております。");
     location.reload();
-}
-
-function closeSuccessModal() {
-    document.getElementById('success-modal').style.display = 'none';
-    location.reload(); // 状態をリセット
 }
