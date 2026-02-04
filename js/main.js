@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAdminToggle();
     checkAdminState();
     checkReservationStatus();
+    fetchReservations(); // 誰でも予約が見られるように初期化時に呼び出し
 });
 
 function checkReservationStatus() {
@@ -80,7 +81,6 @@ function checkAdminState() {
     if (isAdmin) {
         section.style.display = 'block';
         toggleBtn.innerText = '管理画面を閉じる';
-        fetchReservations(); // 管理者なら予約一覧を取得
     } else {
         section.style.display = 'none';
         toggleBtn.innerText = '商品管理';
@@ -88,7 +88,7 @@ function checkAdminState() {
 }
 
 async function fetchReservations() {
-    if (!supabaseClient || !isAdmin) return;
+    if (!supabaseClient) return;
 
     const { data, error } = await supabaseClient
         .from('reservations')
@@ -101,8 +101,48 @@ async function fetchReservations() {
     }
 
     if (data) {
-        renderAdminReservations(data);
+        renderPublicReservations(data);
+        if (isAdmin) {
+            renderAdminReservations(data);
+        }
     }
+}
+
+function renderPublicReservations(reservations) {
+    const list = document.getElementById('public-reservation-list');
+    if (!list) return;
+
+    if (reservations.length === 0) {
+        list.innerHTML = '<tr><td colspan="3" style="padding: 2rem; text-align: center;">現在、予約はありません。</td></tr>';
+        return;
+    }
+
+    list.innerHTML = reservations.map(r => {
+        // Itemsのパース
+        let items = r.items;
+        if (typeof items === 'string') {
+            try { items = JSON.parse(items); } catch (e) { }
+        }
+
+        const itemsHtml = Array.isArray(items)
+            ? items.map(i => {
+                const icon = i.placeholder && i.placeholder.startsWith('http') ? '📷' : (i.placeholder || '🍞');
+                return `<span style="display:inline-block; margin-right:10px;">${icon} ${i.name} x${i.quantity}</span>`;
+            }).join('')
+            : '内容不明';
+
+        const dateStr = new Date(r.pickup_time).toLocaleString('ja-JP', {
+            month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', weekday: 'short'
+        });
+
+        return `
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 1rem; color: var(--primary-color); font-weight:bold;">${dateStr}</td>
+            <td style="padding: 1rem;">${r.name} 様</td>
+            <td style="padding: 1rem;">${itemsHtml}</td>
+        </tr>
+        `;
+    }).join('');
 }
 
 function renderAdminReservations(reservations) {
