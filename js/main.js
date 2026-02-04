@@ -46,11 +46,7 @@ async function updatePublicReservationCount() {
 
     const display = document.getElementById('reservation-count-display');
     if (display) {
-        if (count > 0) {
-            display.innerHTML = `現在 <span style="font-size: 1.4rem; color: var(--accent-color);">${count}名</span> の方が予約しています！`;
-        } else {
-            display.innerHTML = `まだ予約枠に空きがあります！`;
-        }
+        display.innerHTML = `現在 <span style="font-size: 1.4rem; color: var(--accent-color);">${count || 0}名</span> の方が予約しています！`;
     }
 }
 
