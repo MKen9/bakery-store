@@ -20,6 +20,7 @@ try {
 let localProducts = [];
 let cart = JSON.parse(localStorage.getItem('bakery-cart')) || [];
 let isAdmin = false;
+let editingProductId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchProducts();
@@ -266,10 +267,58 @@ function displayAdminProducts() {
 
         return `
         <div class="admin-item">
-            <span>${icon} <strong>${product.name}</strong> - ¥${product.price} (在庫: ${product.stock})</span>
-            <button onclick="deleteProduct(${product.id})" style="color: red; border: none; background: none; cursor: pointer;">削除</button>
+            <span style="flex-grow: 1;">${icon} <strong>${product.name}</strong> - ¥${product.price} (在庫: ${product.stock})</span>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="startEditProduct(${product.id})" style="color: var(--primary-color); border: 1px solid var(--primary-color); background: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">編集</button>
+                <button onclick="deleteProduct(${product.id})" style="color: #f44336; border: 1px solid #f44336; background: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">削除</button>
+            </div>
         </div>
     `}).join('');
+}
+
+function startEditProduct(id) {
+    const product = localProducts.find(p => p.id === id);
+    if (!product) return;
+
+    editingProductId = id;
+
+    // フォームに値をセット
+    document.getElementById('new-p-name').value = product.name;
+    document.getElementById('new-p-price').value = product.price;
+    document.getElementById('new-p-stock').value = product.stock;
+    document.getElementById('new-p-desc').value = product.description;
+    // 画像はリセット（現在の画像は維持されるようにロジックを組む）
+    document.getElementById('new-p-image').value = '';
+
+    // ボタン表示の切り替え
+    document.getElementById('add-product-btn').innerText = '保存する';
+    document.getElementById('cancel-edit-btn').style.display = 'block';
+
+    // フォームまでスクロール
+    document.getElementById('admin-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEdit() {
+    editingProductId = null;
+
+    // フォームをクリア
+    document.getElementById('new-p-name').value = '';
+    document.getElementById('new-p-price').value = '';
+    document.getElementById('new-p-stock').value = '';
+    document.getElementById('new-p-desc').value = '';
+    document.getElementById('new-p-image').value = '';
+
+    // ボタン表示を戻す
+    document.getElementById('add-product-btn').innerText = '商品を追加';
+    document.getElementById('cancel-edit-btn').style.display = 'none';
+}
+
+async function handleProductSubmit() {
+    if (editingProductId) {
+        await updateProduct(editingProductId);
+    } else {
+        await addNewProduct();
+    }
 }
 
 // 商品追加（Supabase）
@@ -337,6 +386,68 @@ async function addNewProduct() {
         document.getElementById('new-p-stock').value = '';
         document.getElementById('new-p-desc').value = '';
         document.getElementById('new-p-image').value = '';
+    }
+}
+
+async function updateProduct(id) {
+    if (!supabaseClient) return;
+
+    const name = document.getElementById('new-p-name').value;
+    const price = parseInt(document.getElementById('new-p-price').value);
+    const desc = document.getElementById('new-p-desc').value;
+    const imageFile = document.getElementById('new-p-image').files[0];
+    const stock = parseInt(document.getElementById('new-p-stock').value) || 0;
+
+    if (!name || isNaN(price)) {
+        alert("名前と価格を入力してください。");
+        return;
+    }
+
+    const currentProduct = localProducts.find(p => p.id === id);
+    let icon = currentProduct.placeholder; // 現在の画像をデフォルトにする
+
+    // 画像アップロード処理（新しく選択された場合のみ）
+    if (imageFile) {
+        try {
+            const fileName = `${Date.now()}_${imageFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+            const { data, error } = await supabaseClient.storage
+                .from('product-images')
+                .upload(fileName, imageFile);
+
+            if (error) throw error;
+
+            const { data: publicUrlData } = supabaseClient.storage
+                .from('product-images')
+                .getPublicUrl(fileName);
+
+            icon = publicUrlData.publicUrl;
+        } catch (e) {
+            console.error('Upload failed:', e);
+            alert('画像のアップロードに失敗しました: ' + e.message);
+            return;
+        }
+    }
+
+    const updatedProduct = {
+        name: name,
+        price: price,
+        description: desc,
+        placeholder: icon,
+        stock: stock
+    };
+
+    const { error } = await supabaseClient
+        .from('products')
+        .update(updatedProduct)
+        .eq('id', id);
+
+    if (error) {
+        console.error('Error updating product:', error);
+        alert('更新に失敗しました: ' + error.message);
+    } else {
+        alert('更新しました！');
+        cancelEdit(); // フォームリセットと表示戻し
+        fetchProducts(); // 再取得して表示更新
     }
 }
 

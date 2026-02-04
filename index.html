@@ -56,7 +56,12 @@
                         <input type="file" id="new-p-image" accept="image/*" style="padding: 0.5rem;">
                         <span style="font-size: 0.8rem; color: #666;">(未選択時は🍞)</span>
                     </div>
-                    <button class="btn-add" onclick="addNewProduct()">商品を追加</button>
+                    <div style="display: flex; gap: 10px; grid-column: 1 / -1; margin-top: 1rem;">
+                        <button id="add-product-btn" class="btn-add" onclick="handleProductSubmit()"
+                            style="flex: 1;">商品を追加</button>
+                        <button id="cancel-edit-btn" class="btn-secondary" onclick="cancelEdit()"
+                            style="display: none; border-color: #999; color: #999; flex: 1;">キャンセル</button>
+                    </div>
                 </div>
                 <div id="admin-product-list" class="admin-list">
                     <!-- 管理用の商品一覧 -->
