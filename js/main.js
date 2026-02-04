@@ -240,8 +240,16 @@ function displayProducts() {
             <div class="product-info">
                 <h4>${product.name}</h4>
                 <p>${product.description}</p>
-                <span class="product-price">¥${product.price.toLocaleString()}</span>
-                <button class="btn-add" onclick="addToCart(${product.id})">予約リストに追加</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <span class="product-price">¥${product.price.toLocaleString()}</span>
+                    <span style="font-size: 0.9rem; color: ${product.stock > 0 ? '#666' : '#e44'} font-weight: bold;">
+                        ${product.stock > 0 ? `残り: ${product.stock}個` : '売り切れ'}
+                    </span>
+                </div>
+                ${product.stock > 0
+                ? `<button class="btn-add" onclick="addToCart(${product.id})">予約リストに追加</button>`
+                : `<button class="btn-add" style="background-color: #ccc; cursor: not-allowed;" disabled>売り切れ</button>`
+            }
             </div>
         </div>
     `}).join('');
@@ -258,7 +266,7 @@ function displayAdminProducts() {
 
         return `
         <div class="admin-item">
-            <span>${icon} <strong>${product.name}</strong> - ¥${product.price}</span>
+            <span>${icon} <strong>${product.name}</strong> - ¥${product.price} (在庫: ${product.stock})</span>
             <button onclick="deleteProduct(${product.id})" style="color: red; border: none; background: none; cursor: pointer;">削除</button>
         </div>
     `}).join('');
@@ -302,11 +310,14 @@ async function addNewProduct() {
         }
     }
 
+    const stock = parseInt(document.getElementById('new-p-stock').value) || 0;
+
     const newProduct = {
         name: name,
         price: price,
         description: desc,
-        placeholder: icon
+        placeholder: icon,
+        stock: stock
     };
 
     const { data, error } = await supabaseClient
@@ -323,6 +334,7 @@ async function addNewProduct() {
         // クリア
         document.getElementById('new-p-name').value = '';
         document.getElementById('new-p-price').value = '';
+        document.getElementById('new-p-stock').value = '';
         document.getElementById('new-p-desc').value = '';
         document.getElementById('new-p-image').value = '';
     }
@@ -521,7 +533,8 @@ async function confirmReservation() {
 
     // Supabaseに保存
     if (supabaseClient) {
-        const { error } = await supabaseClient
+        // 1. 予約データを保存
+        const { error: resError } = await supabaseClient
             .from('reservations')
             .insert([{
                 name: name,
@@ -531,10 +544,27 @@ async function confirmReservation() {
                 total_price: totalPrice
             }]);
 
-        if (error) {
-            console.error('Error saving reservation to Supabase:', error);
-            alert('予約の送信に失敗しましたが、ローカルには保存します。店舗へ直接お問い合わせが必要かもしれません。');
-            // エラーでも一旦ローカル保存処理へ進む（UXのため）
+        if (resError) {
+            console.error('Error saving reservation to Supabase:', resError);
+            alert('予約の送信に失敗しました。');
+            return;
+        }
+
+        // 2. 在庫を減らす
+        for (const item of cart) {
+            const { data: pData } = await supabaseClient
+                .from('products')
+                .select('stock')
+                .eq('id', item.id)
+                .single();
+
+            if (pData) {
+                const newStock = Math.max(0, pData.stock - item.quantity);
+                await supabaseClient
+                    .from('products')
+                    .update({ stock: newStock })
+                    .eq('id', item.id);
+            }
         }
     }
 
