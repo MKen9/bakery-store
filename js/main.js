@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAdminToggle();
     checkAdminState();
     checkReservationStatus();
-    fetchReservations(); // 誰でも予約が見られるように初期化時に呼び出し
 });
 
 function checkReservationStatus() {
@@ -81,6 +80,7 @@ function checkAdminState() {
     if (isAdmin) {
         section.style.display = 'block';
         toggleBtn.innerText = '管理画面を閉じる';
+        fetchReservations(); // 管理者なら予約一覧を取得
     } else {
         section.style.display = 'none';
         toggleBtn.innerText = '商品管理';
@@ -88,7 +88,7 @@ function checkAdminState() {
 }
 
 async function fetchReservations() {
-    if (!supabaseClient) return;
+    if (!supabaseClient || !isAdmin) return;
 
     const { data, error } = await supabaseClient
         .from('reservations')
@@ -101,10 +101,7 @@ async function fetchReservations() {
     }
 
     if (data) {
-        renderPublicReservations(data);
-        if (isAdmin) {
-            renderAdminReservations(data);
-        }
+        renderAdminReservations(data);
     }
 }
 
