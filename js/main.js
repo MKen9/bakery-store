@@ -27,7 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCartModal();
     setupAdminToggle();
     checkAdminState();
+    checkReservationStatus();
 });
+
+function checkReservationStatus() {
+    const reservationBtn = document.getElementById('view-reservation-btn');
+    if (reservationBtn && localStorage.getItem('bakery-reservation-latest')) {
+        reservationBtn.style.display = 'inline-block';
+    }
+}
 
 // 認証状態の監視
 if (supabaseClient) {
@@ -332,13 +340,26 @@ function confirmReservation() {
         return;
     }
 
+    // 予約データを準備
+    const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const reservation = {
+        name: name,
+        date: date,
+        email: email,
+        items: cart, // 現在のカートの内容を保存
+        totalPrice: totalPrice,
+        createdAt: new Date().toISOString()
+    };
+
+    // 確認ページ用にローカルストレージに保存
+    localStorage.setItem('bakery-reservation-latest', JSON.stringify(reservation));
+
     // カートを空にする
     cart = [];
     saveCart();
     updateCartCount();
 
-    // モーダルを切り替え
+    // モーダルを閉じてページ遷移
     document.getElementById('cart-modal').style.display = 'none';
-    alert("予約が完了しました！\nご来店をお待ちしております。");
-    location.reload();
+    window.location.href = 'reservation-confirmed.html';
 }
