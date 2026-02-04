@@ -148,9 +148,14 @@ function displayProducts() {
         return;
     }
 
-    productList.innerHTML = localProducts.map(product => `
+    productList.innerHTML = localProducts.map(product => {
+        const imageContent = product.placeholder && product.placeholder.startsWith('http')
+            ? `<img src="${product.placeholder}" alt="${product.name}">`
+            : (product.placeholder || '🍞');
+
+        return `
         <div class="product-card">
-            <div class="product-image">${product.placeholder || '🍞'}</div>
+            <div class="product-image">${imageContent}</div>
             <div class="product-info">
                 <h4>${product.name}</h4>
                 <p>${product.description}</p>
@@ -158,19 +163,24 @@ function displayProducts() {
                 <button class="btn-add" onclick="addToCart(${product.id})">予約リストに追加</button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function displayAdminProducts() {
     const adminList = document.getElementById('admin-product-list');
     if (!adminList) return;
 
-    adminList.innerHTML = localProducts.map(product => `
+    adminList.innerHTML = localProducts.map(product => {
+        const icon = product.placeholder && product.placeholder.startsWith('http')
+            ? '📷'
+            : (product.placeholder || '🍞');
+
+        return `
         <div class="admin-item">
-            <span>${product.placeholder || '🍞'} <strong>${product.name}</strong> - ¥${product.price}</span>
+            <span>${icon} <strong>${product.name}</strong> - ¥${product.price}</span>
             <button onclick="deleteProduct(${product.id})" style="color: red; border: none; background: none; cursor: pointer;">削除</button>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 // 商品追加（Supabase）
@@ -180,11 +190,35 @@ async function addNewProduct() {
     const name = document.getElementById('new-p-name').value;
     const price = parseInt(document.getElementById('new-p-price').value);
     const desc = document.getElementById('new-p-desc').value;
-    const icon = document.getElementById('new-p-icon').value || "🍞";
+    const imageFile = document.getElementById('new-p-image').files[0];
 
     if (!name || isNaN(price)) {
         alert("名前と価格を入力してください。");
         return;
+    }
+
+    let icon = "🍞"; // デフォルト
+
+    // 画像アップロード処理
+    if (imageFile) {
+        try {
+            const fileName = `${Date.now()}_${imageFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+            const { data, error } = await supabaseClient.storage
+                .from('product-images')
+                .upload(fileName, imageFile);
+
+            if (error) throw error;
+
+            const { data: publicUrlData } = supabaseClient.storage
+                .from('product-images')
+                .getPublicUrl(fileName);
+
+            icon = publicUrlData.publicUrl;
+        } catch (e) {
+            console.error('Upload failed:', e);
+            alert('画像のアップロードに失敗しました: ' + e.message);
+            return;
+        }
     }
 
     const newProduct = {
@@ -209,7 +243,7 @@ async function addNewProduct() {
         document.getElementById('new-p-name').value = '';
         document.getElementById('new-p-price').value = '';
         document.getElementById('new-p-desc').value = '';
-        document.getElementById('new-p-icon').value = '';
+        document.getElementById('new-p-image').value = '';
     }
 }
 

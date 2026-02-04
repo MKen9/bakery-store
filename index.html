@@ -47,7 +47,11 @@
                     <input type="text" id="new-p-name" placeholder="商品名">
                     <input type="number" id="new-p-price" placeholder="価格（円）">
                     <input type="text" id="new-p-desc" placeholder="説明">
-                    <input type="text" id="new-p-icon" placeholder="絵文字(例:🥐)">
+                    <input type="text" id="new-p-desc" placeholder="説明">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="file" id="new-p-image" accept="image/*" style="padding: 0.5rem;">
+                        <span style="font-size: 0.8rem; color: #666;">(未選択時は🍞)</span>
+                    </div>
                     <button class="btn-add" onclick="addNewProduct()">商品を追加</button>
                 </div>
                 <div id="admin-product-list" class="admin-list">

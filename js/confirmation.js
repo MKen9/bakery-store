@@ -33,12 +33,16 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         reservation.items.forEach(item => {
+            const icon = item.placeholder && item.placeholder.startsWith('http')
+                ? `<img src="${item.placeholder}" style="width:50px; height:50px; object-fit:cover; border-radius:4px; vertical-align:middle; margin-right:5px;">`
+                : (item.placeholder || '🍞');
+
             html += `
-                <li style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; border-bottom: 1px dashed #eee; padding-bottom: 0.5rem;">
-                    <span>
-                        ${item.placeholder || '🍞'} 
+                <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; border-bottom: 1px dashed #eee; padding-bottom: 0.5rem;">
+                    <span style="display: flex; align-items: center;">
+                        ${icon} 
                         <strong>${item.name}</strong> 
-                        <span style="font-size: 0.9em; color: #666;">x ${item.quantity}</span>
+                        <span style="font-size: 0.9em; color: #666; margin-left: 5px;">x ${item.quantity}</span>
                     </span>
                     <span>¥${(item.price * item.quantity).toLocaleString()}</span>
                 </li>
