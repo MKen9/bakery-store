@@ -159,7 +159,6 @@ function renderPublicReservations(reservations) {
         return `
         <tr style="border-bottom: 1px solid #eee;">
             <td style="padding: 1rem; color: var(--primary-color); font-weight:bold;">${dateStr}</td>
-            <td style="padding: 1rem;">${r.name} 様</td>
             <td style="padding: 1rem;">${itemsHtml}</td>
         </tr>
         `;
