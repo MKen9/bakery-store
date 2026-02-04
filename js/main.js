@@ -28,7 +28,31 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAdminToggle();
     checkAdminState();
     checkReservationStatus();
+    updatePublicReservationCount(); // 予約人数を表示
 });
+
+async function updatePublicReservationCount() {
+    if (!supabaseClient) return;
+
+    // データの中身は取得せず、件数（count）だけを取得する効率的なクエリ
+    const { count, error } = await supabaseClient
+        .from('reservations')
+        .select('*', { count: 'exact', head: true });
+
+    if (error) {
+        console.error('Error fetching count:', error);
+        return;
+    }
+
+    const display = document.getElementById('reservation-count-display');
+    if (display) {
+        if (count > 0) {
+            display.innerHTML = `現在 <span style="font-size: 1.4rem; color: var(--accent-color);">${count}名</span> の方が予約しています！`;
+        } else {
+            display.innerHTML = `まだ予約枠に空きがあります！`;
+        }
+    }
+}
 
 function checkReservationStatus() {
     const reservationBtn = document.getElementById('view-reservation-btn');
@@ -523,6 +547,9 @@ async function confirmReservation() {
     cart = [];
     saveCart();
     updateCartCount();
+
+    // 予約人数表示を更新（自分も増えたので）
+    updatePublicReservationCount();
 
     // モーダルを閉じてページ遷移
     document.getElementById('cart-modal').style.display = 'none';
