@@ -80,10 +80,63 @@ function checkAdminState() {
     if (isAdmin) {
         section.style.display = 'block';
         toggleBtn.innerText = '管理画面を閉じる';
+        fetchReservations(); // 管理者なら予約一覧を取得
     } else {
         section.style.display = 'none';
         toggleBtn.innerText = '商品管理';
     }
+}
+
+async function fetchReservations() {
+    if (!supabaseClient || !isAdmin) return;
+
+    const { data, error } = await supabaseClient
+        .from('reservations')
+        .select('*')
+        .order('pickup_time', { ascending: true }); // 受け取り日時順
+
+    if (error) {
+        console.error('Error fetching reservations:', error);
+        return;
+    }
+
+    if (data) {
+        renderAdminReservations(data);
+    }
+}
+
+function renderAdminReservations(reservations) {
+    const list = document.getElementById('admin-reservation-list');
+    if (!list) return;
+
+    if (reservations.length === 0) {
+        list.innerHTML = '<tr><td colspan="5" style="padding: 1rem; text-align: center;">予約はまだありません</td></tr>';
+        return;
+    }
+
+    list.innerHTML = reservations.map(r => {
+        // Itemsのパース (JSONBとして保存されている想定)
+        let items = r.items;
+        if (typeof items === 'string') {
+            try { items = JSON.parse(items); } catch (e) { }
+        }
+
+        const itemsHtml = Array.isArray(items)
+            ? items.map(i => `<div>${i.name} x${i.quantity}</div>`).join('')
+            : '内容不明';
+
+        const dateStr = new Date(r.pickup_time).toLocaleString('ja-JP');
+
+        return `
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 1rem;">${dateStr}</td>
+            <td style="padding: 1rem;">${r.name}</td>
+            <td style="padding: 1rem;">${itemsHtml}</td>
+            <td style="padding: 1rem;">¥${r.total_price.toLocaleString()}</td>
+            <td style="padding: 1rem;">${r.email}</td>
+        </tr>
+        `;
+    }).join('');
 }
 
 function displayProducts() {
@@ -330,7 +383,7 @@ async function logout() {
     // 状態更新は onAuthStateChange で行われます
 }
 
-function confirmReservation() {
+async function confirmReservation() {
     const name = document.getElementById('res-name').value;
     const date = document.getElementById('res-date').value;
     const email = document.getElementById('res-email').value;
@@ -350,6 +403,25 @@ function confirmReservation() {
         totalPrice: totalPrice,
         createdAt: new Date().toISOString()
     };
+
+    // Supabaseに保存
+    if (supabaseClient) {
+        const { error } = await supabaseClient
+            .from('reservations')
+            .insert([{
+                name: name,
+                pickup_time: date,
+                email: email,
+                items: cart,
+                total_price: totalPrice
+            }]);
+
+        if (error) {
+            console.error('Error saving reservation to Supabase:', error);
+            alert('予約の送信に失敗しましたが、ローカルには保存します。店舗へ直接お問い合わせが必要かもしれません。');
+            // エラーでも一旦ローカル保存処理へ進む（UXのため）
+        }
+    }
 
     // 確認ページ用にローカルストレージに保存
     localStorage.setItem('bakery-reservation-latest', JSON.stringify(reservation));
