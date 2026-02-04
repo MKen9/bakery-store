@@ -171,9 +171,30 @@ function renderAdminReservations(reservations) {
             <td style="padding: 1rem;">${itemsHtml}</td>
             <td style="padding: 1rem;">¥${r.total_price.toLocaleString()}</td>
             <td style="padding: 1rem;">${r.email}</td>
+            <td style="padding: 1rem;">
+                <button onclick="deleteReservation(${r.id})" style="color: red; border: 1px solid red; background: white; padding: 4px 8px; border-radius: 4px; cursor: pointer;">削除</button>
+            </td>
         </tr>
         `;
     }).join('');
+}
+
+// 予約削除機能
+async function deleteReservation(id) {
+    if (!supabaseClient || !isAdmin) return;
+    if (!confirm("この予約を削除しますか？\n（復元できません）")) return;
+
+    const { error } = await supabaseClient
+        .from('reservations')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        console.error('Error deleting reservation:', error);
+        alert('削除に失敗しました: ' + error.message);
+    } else {
+        fetchReservations(); // リスト更新
+    }
 }
 
 function displayProducts() {
@@ -456,11 +477,12 @@ async function logout() {
 
 async function confirmReservation() {
     const name = document.getElementById('res-name').value;
-    const date = document.getElementById('res-date').value;
+    // 日時は現在時刻を自動設定
+    const date = new Date().toISOString();
     const email = document.getElementById('res-email').value;
 
-    if (!name || !date || !email) {
-        alert("すべての項目を入力してください。");
+    if (!name || !email) {
+        alert("名前とメールアドレスを入力してください。");
         return;
     }
 
