@@ -84,6 +84,27 @@
             </div>
         </section>
 
+        <section class="reservation-status" style="padding: 4rem 0; background-color: #f9f9f9;">
+            <div class="container">
+                <h3>混雑状況・予約一覧</h3>
+                <p style="text-align: center; margin-bottom: 2rem;">受取日時を確認して、混雑を避けた予約が可能です。</p>
+                <div class="admin-list" style="overflow-x: auto; box-shadow: var(--shadow-sm);">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 600px; background: white;">
+                        <thead>
+                            <tr style="background: var(--primary-color); color: white; text-align: left;">
+                                <th style="padding: 1rem;">受取予定日時</th>
+                                <th style="padding: 1rem;">お名前</th>
+                                <th style="padding: 1rem;">予約内容</th>
+                            </tr>
+                        </thead>
+                        <tbody id="public-reservation-list">
+                            <!-- 予約データがここに表示されます -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
         <section class="products">
             <div class="container">
                 <h3>商品一覧</h3>
@@ -113,7 +134,10 @@
                     <label>お名前</label>
                     <input type="text" id="res-name" placeholder="山田 太郎">
                 </div>
-                <!-- 日時は自動設定されるため削除 -->
+                <div class="form-group">
+                    <label>受取希望日時</label>
+                    <input type="datetime-local" id="res-date">
+                </div>
                 <div class="form-group">
                     <label>メールアドレス</label>
                     <input type="email" id="res-email" placeholder="example@mail.com">

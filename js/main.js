@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAdminState();
     checkReservationStatus();
     updatePublicReservationCount(); // 予約人数を表示
+    fetchReservations(); // 予約一覧を表示
 });
 
 async function updatePublicReservationCount() {
@@ -108,7 +109,7 @@ function checkAdminState() {
 }
 
 async function fetchReservations() {
-    if (!supabaseClient || !isAdmin) return;
+    if (!supabaseClient) return;
 
     const { data, error } = await supabaseClient
         .from('reservations')
@@ -121,7 +122,10 @@ async function fetchReservations() {
     }
 
     if (data) {
-        renderAdminReservations(data);
+        renderPublicReservations(data); // 公開リストを更新
+        if (isAdmin) {
+            renderAdminReservations(data); // 管理者リストを更新
+        }
     }
 }
 
@@ -497,12 +501,11 @@ async function logout() {
 
 async function confirmReservation() {
     const name = document.getElementById('res-name').value;
-    // 日時は現在時刻を自動設定
-    const date = new Date().toISOString();
+    const date = document.getElementById('res-date').value;
     const email = document.getElementById('res-email').value;
 
-    if (!name || !email) {
-        alert("名前とメールアドレスを入力してください。");
+    if (!name || !date || !email) {
+        alert("すべての項目を入力してください。");
         return;
     }
 
