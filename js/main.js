@@ -78,7 +78,7 @@ async function fetchProducts() {
     const { data, error } = await supabaseClient
         .from('products')
         .select('*')
-        .order('id', { ascending: true });
+        .order('stock', { ascending: false });
 
     if (error) {
         console.error('Error fetching products:', error);
