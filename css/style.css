@@ -316,8 +316,29 @@ nav {
     color: var(--primary-color);
     font-weight: 800;
     font-size: 1.5rem;
-    margin-bottom: 1.5rem;
     display: block;
+}
+
+.quantity-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.quantity-selector label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.quantity-input {
+    width: 70px;
+    padding: 0.5rem;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 700;
 }
 
 .btn-add {

@@ -243,12 +243,18 @@ function displayProducts() {
                 <p>${product.description}</p>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <span class="product-price">¥${product.price.toLocaleString()}</span>
-                    <span style="font-size: 0.9rem; color: ${product.stock > 0 ? '#666' : '#e44'} font-weight: bold;">
+                    <span style="font-size: 0.9rem; color: ${product.stock > 0 ? '#666' : '#e44'}; font-weight: bold;">
                         ${product.stock > 0 ? `残り: ${product.stock}個` : '売り切れ'}
                     </span>
                 </div>
                 ${product.stock > 0
-                ? `<button class="btn-add" onclick="addToCart(${product.id})">予約リストに追加</button>`
+                ? `
+                    <div class="quantity-selector">
+                        <label for="qty-${product.id}">個数:</label>
+                        <input type="number" id="qty-${product.id}" class="quantity-input" value="1" min="1" max="${product.stock}">
+                    </div>
+                    <button class="btn-add" onclick="addToCart(${product.id})">予約リストに追加</button>
+                  `
                 : `<button class="btn-add" style="background-color: #ccc; cursor: not-allowed;" disabled>売り切れ</button>`
             }
             </div>
@@ -474,16 +480,31 @@ function addToCart(productId) {
     const product = localProducts.find(p => p.id === productId);
     if (!product) return;
 
+    const qtyInput = document.getElementById(`qty-${productId}`);
+    const requestedQty = parseInt(qtyInput.value) || 1;
+
+    if (requestedQty <= 0) {
+        alert("1つ以上選択してください。");
+        return;
+    }
+
     const existingItem = cart.find(item => item.id === productId);
+    const currentQtyInCart = existingItem ? existingItem.quantity : 0;
+
+    if (currentQtyInCart + requestedQty > product.stock) {
+        alert(`在庫不足です。現在の予約リストには${currentQtyInCart}個入っており、在庫は残り${product.stock}個です。`);
+        return;
+    }
+
     if (existingItem) {
-        existingItem.quantity += 1;
+        existingItem.quantity += requestedQty;
     } else {
-        cart.push({ ...product, quantity: 1 });
+        cart.push({ ...product, quantity: requestedQty });
     }
 
     saveCart();
     updateCartCount();
-    alert(`${product.name}を予約リストに追加しました！`);
+    alert(`${product.name}を${requestedQty}個予約リストに追加しました！`);
 }
 
 function updateCartCount() {
@@ -644,7 +665,35 @@ async function confirmReservation() {
 
     // Supabaseに保存
     if (supabaseClient) {
-        // 1. 予約データを保存
+        // 1. 最新の在庫をチェック
+        const insufficientStockItems = [];
+        const stockUpdates = [];
+
+        for (const item of cart) {
+            const { data: pData, error: fetchError } = await supabaseClient
+                .from('products')
+                .select('stock, name')
+                .eq('id', item.id)
+                .single();
+
+            if (fetchError || !pData) {
+                alert(`商品「${item.name}」の情報取得に失敗しました。`);
+                return;
+            }
+
+            if (pData.stock < item.quantity) {
+                insufficientStockItems.push(`${pData.name} (在庫: ${pData.stock}, 注文: ${item.quantity})`);
+            } else {
+                stockUpdates.push({ id: item.id, newStock: pData.stock - item.quantity });
+            }
+        }
+
+        if (insufficientStockItems.length > 0) {
+            alert(`以下の商品の在庫が不足しているため、予約を完了できませんでした：\n\n${insufficientStockItems.join('\n')}\n\n予約内容を調整してください。`);
+            return;
+        }
+
+        // 2. 予約データを保存
         const { error: resError } = await supabaseClient
             .from('reservations')
             .insert([{
@@ -661,21 +710,12 @@ async function confirmReservation() {
             return;
         }
 
-        // 2. 在庫を減らす
-        for (const item of cart) {
-            const { data: pData } = await supabaseClient
+        // 3. 在庫を減らす (本来はSupabaseのRPCなどでトランザクション化すべきですが、フロントエンドで逐次実行します)
+        for (const update of stockUpdates) {
+            await supabaseClient
                 .from('products')
-                .select('stock')
-                .eq('id', item.id)
-                .single();
-
-            if (pData) {
-                const newStock = Math.max(0, pData.stock - item.quantity);
-                await supabaseClient
-                    .from('products')
-                    .update({ stock: newStock })
-                    .eq('id', item.id);
-            }
+                .update({ stock: update.newStock })
+                .eq('id', update.id);
         }
     }
 
