@@ -361,6 +361,89 @@ nav {
     box-shadow: 0 6px 12px rgba(212, 163, 115, 0.4);
 }
 
+/* Compact Product View */
+.product-grid.compact-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.product-grid.compact-view .product-card {
+    flex-direction: row;
+    padding: 0.75rem 1rem;
+    min-height: auto;
+    align-items: center;
+}
+
+.product-grid.compact-view .product-image {
+    display: none;
+}
+
+.product-grid.compact-view .product-info {
+    padding: 0;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    /* Push items to right, name will be left due to flex-grow */
+    width: 100%;
+    gap: 0.5rem;
+}
+
+.product-grid.compact-view .product-info h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    margin-right: auto;
+    /* Push everything else to the right */
+}
+
+.product-grid.compact-view .product-info p {
+    display: none;
+}
+
+/* Price & Stock Container - overriding inline style */
+.product-grid.compact-view .product-info>div[style*="margin-bottom"] {
+    margin-bottom: 0 !important;
+    margin-right: 0.5rem;
+}
+
+.product-grid.compact-view .product-price {
+    font-size: 1rem;
+}
+
+.product-grid.compact-view .quantity-selector {
+    margin-bottom: 0;
+}
+
+.product-grid.compact-view .quantity-selector label {
+    display: none;
+}
+
+.product-grid.compact-view .btn-add {
+    width: auto;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
+}
+
+@media (max-width: 600px) {
+    .product-grid.compact-view .product-info h4 {
+        width: 100%;
+        /* Force new line on very small screens if needed, or keep inline */
+        margin-bottom: 0.25rem;
+    }
+
+    .product-grid.compact-view .product-info {
+        justify-content: space-between;
+        /* Spread out controls */
+    }
+
+    .product-grid.compact-view .product-info>div[style*="margin-bottom"] {
+        margin-right: auto;
+        /* Keep price near left if wrapped */
+    }
+}
+
 /* Modal styles */
 .modal {
     display: none;

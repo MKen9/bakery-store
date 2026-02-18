@@ -112,7 +112,12 @@
 
         <section class="products">
             <div class="container">
-                <h3>商品一覧</h3>
+                <div
+                    style="display: flex; align-items: center; justify-content: center; gap: 1rem; position: relative; margin-bottom: 3.5rem;">
+                    <h3 style="margin-bottom: 0;">商品一覧</h3>
+                    <button id="toggle-view-btn" class="btn-secondary"
+                        style="font-size: 0.8rem; padding: 0.4rem 0.8rem; height: fit-content;">小さく表示</button>
+                </div>
                 <div id="product-list" class="product-grid">
                     <!-- 商品がここに動的に追加されます -->
                 </div>

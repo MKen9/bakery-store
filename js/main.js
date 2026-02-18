@@ -31,7 +31,30 @@ document.addEventListener('DOMContentLoaded', () => {
     checkReservationStatus();
     updatePublicReservationCount(); // 予約人数を表示
     fetchReservations(); // 予約一覧を表示
+    setupViewToggle(); // 表示切り替えボタンの設定
 });
+
+function setupViewToggle() {
+    const btn = document.getElementById('toggle-view-btn');
+    const list = document.getElementById('product-list');
+
+    if (btn && list) {
+        btn.onclick = () => {
+            const isCompact = list.classList.toggle('compact-view');
+            btn.innerText = isCompact ? '元の表示に戻す' : '小さく表示';
+
+            // ローカルストレージに設定を保存（オプション）
+            localStorage.setItem('bakery-view-mode', isCompact ? 'compact' : 'normal');
+        };
+
+        // 初期表示の設定を復元
+        const savedMode = localStorage.getItem('bakery-view-mode');
+        if (savedMode === 'compact') {
+            list.classList.add('compact-view');
+            btn.innerText = '元の表示に戻す';
+        }
+    }
+}
 
 async function updatePublicReservationCount() {
     if (!supabaseClient) return;
