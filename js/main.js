@@ -96,26 +96,50 @@ if (supabaseClient) {
 
 // Supabaseから商品データを取得
 async function fetchProducts() {
-    if (!supabaseClient) return;
-
-    const { data, error } = await supabaseClient
-        .from('products')
-        .select('*')
-        .order('stock', { ascending: false });
-
-    if (error) {
-        console.error('Error fetching products:', error);
-        // テーブルがまだない場合などのエラーハンドリング
-        if (error.code === '42P01') { // undefined_table
-            alert('Supabaseに "products" テーブルが見つかりません。SQLを実行してテーブルを作成してください。');
+    if (!supabaseClient) {
+        const productList = document.getElementById('product-list');
+        if (productList) {
+            productList.innerHTML = '<p style="color:red; text-align:center;">エラー: データベース接続が初期化されていません。</p>';
         }
         return;
     }
 
-    if (data) {
-        localProducts = data;
-        displayProducts();
-        displayAdminProducts();
+    try {
+        const { data, error } = await supabaseClient
+            .from('products')
+            .select('*')
+            .order('stock', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching products:', error);
+            const productList = document.getElementById('product-list');
+            if (productList) {
+                productList.innerHTML = `<p style="color:red; text-align:center;">商品データの取得に失敗しました。<br>${error.message}</p>`;
+            }
+            // テーブルがまだない場合などのエラーハンドリング
+            if (error.code === '42P01') { // undefined_table
+                alert('Supabaseに "products" テーブルが見つかりません。SQLを実行してテーブルを作成してください。');
+            }
+            return;
+        }
+
+        if (data && data.length > 0) {
+            localProducts = data;
+            displayProducts();
+            displayAdminProducts();
+        } else {
+            localProducts = [];
+            const productList = document.getElementById('product-list');
+            if (productList) {
+                productList.innerHTML = '<p style="text-align:center; width:100%;">現在、販売中の商品はありません。</p>';
+            }
+        }
+    } catch (e) {
+        console.error('Unexpected error in fetchProducts:', e);
+        const productList = document.getElementById('product-list');
+        if (productList) {
+            productList.innerHTML = `<p style="color:red; text-align:center;">予期せぬエラーが発生しました。<br>${e.message}</p>`;
+        }
     }
 }
 
